@@ -11,6 +11,6 @@ WARN = -pedantic -Wdouble-promotion -Wformat=2 -Winit-self -Wmissing-include-dir
        -Wunsuffixed-float-constants -Wsuggest-attribute=const -Wsuggest-attribute=noreturn \
        -Wsuggest-attribute=pure -Wsuggest-attribute=format -Wnormalized=nfkc
 
-CFLAGS   = -std=c99 -Wall -Wextra $(WARN) -O3
+CFLAGS   = -I../libkeccak/ -std=c99 -Wall -Wextra $(WARN) -O3
 CPPFLAGS =
-LDFLAGS  = -s -lkeccak
+LDFLAGS  = -L../libkeccak/ -s -lkeccak
