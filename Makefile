@@ -6,5 +6,5 @@ bin/sha3-256sum:
 	mkdir -p bin
 	cp lib-external/sha3sum/sha3-256sum $@
 
-bin/nar: src/nar.c
-	$(CC) $(CFLAGS) -o $@ $^
+bin/nar: src/nar.c src/common.h
+	$(CC) $(CFLAGS) -o $@ $<
