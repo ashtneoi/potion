@@ -1,5 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
-#define _XOPEN_SOURCE
+#define _XOPEN_SOURCE 500
 #define _ATFILE_SOURCE
 
 #include <dirent.h>
@@ -17,6 +17,8 @@
 // STR(s) does macro-expansion of s before stringifying it. (See "Argument Prescan"
 // in the gcc manual.)
 #define STR(s) #s
+
+// TODO: add E_WANTF (like E_EXPECTF except for foreseeable errors)
 
 // Example output:
 //  Error (at src/nar.c:52): expectation `strlen(path) < 40` failed
@@ -107,17 +109,25 @@ void serialize_u64(uint64_t n)
     }
 }
 
+void write_all_to_stdout(const char* buf, size_t size)
+{
+    size_t remaining = size;
+    while (remaining > 0) {
+        ssize_t count = write(STDOUT_FILENO, buf, remaining);
+        E_EXPECTF(count >= 0, "write failed on stdout");
+        remaining -= (size_t)count;
+        buf += count;
+    }
+}
+
+static char EIGHT_ZEROES[8] = { 0 };
+
 void serialize_str(const char* s)
 {
-    size_t remaining = strlen(s); // don't write the null terminator
-    serialize_u64(remaining);
-    while (remaining > 0) {
-        ssize_t count = write(STDOUT_FILENO, s, remaining);
-        E_EXPECTF(count >= 0, "write failed");
-        remaining -= (size_t)count;
-        s += count;
-    }
-    // TODO: pad it!
+    size_t size = strlen(s); // don't write the null terminator
+    serialize_u64(size);
+    write_all_to_stdout(s, size);
+    write_all_to_stdout(EIGHT_ZEROES, (8 - (size % 8)) % 8);
 }
 
 // The caller must free the returned string.
@@ -143,10 +153,35 @@ void serialize_entry(const char* path, const char* name)
     serialize_str(")");
 }
 
+void dump_file(const char* path, size_t size)
+{
+    size_t read_remaining = size;
+    int f = open(path, O_RDONLY);
+    E_EXPECTF(f >= 0, "open failed on \"%s\"", path);
+    static char buf[4096];
+    while (read_remaining > 0) {
+        ssize_t read_count = read(f, buf, 4096);
+        E_EXPECTF(read_count >= 0, "read failed on \"%s\"", path);
+        read_remaining -= read_count;
+
+        size_t write_remaining = read_count;
+        const char* write_buf = buf;
+        while (write_remaining > 0) {
+            ssize_t write_count = write(STDOUT_FILENO, write_buf, write_remaining);
+            E_EXPECTF(write_count >= 0, "write failed on stdout");
+            write_remaining -= write_count;
+            write_buf += write_count;
+        }
+    }
+    write_all_to_stdout(EIGHT_ZEROES, (8 - (size % 8)) % 8);
+}
+
 void serialize_prime_prime(const char* path)
 {
     struct stat stat_buf;
     E_EXPECT(0 == lstat(path, &stat_buf));
+
+    size_t size = stat_buf.st_size;
 
     serialize_str("type");
     switch (stat_buf.st_mode & S_IFMT) { // file type
@@ -157,12 +192,19 @@ void serialize_prime_prime(const char* path)
                 serialize_str("");
             }
             serialize_str("contents");
-            serialize_str("TODO"); // TODO
+            serialize_u64(size);
+            dump_file(path, size);
             break;
         case S_IFLNK:
             serialize_str("symlink");
             serialize_str("target");
-            serialize_str("TODO"); // TODO
+            serialize_u64(size);
+            char* buf = malloc(size);
+            E_EXPECT(buf);
+            ssize_t count = readlink(path, buf, size);
+            E_EXPECTF(count >= 0, "readlink failed on \"%s\"", path);
+            EXPECT((size_t)count == size);
+            write_all_to_stdout(buf, size);
             break;
         case S_IFDIR:
             serialize_str("directory");
