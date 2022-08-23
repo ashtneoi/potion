@@ -7,4 +7,5 @@ bin/sha3-256sum:
 	cp lib-external/sha3sum/sha3-256sum $@
 
 bin/nar: src/nar.c src/common.h
+bin/base24: src/base24.c src/common.h
 	$(CC) $(CFLAGS) -o $@ $<
