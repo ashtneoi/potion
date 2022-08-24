@@ -22,10 +22,34 @@ size_t read_full(int fd, char* buf, size_t len)
 
 char TABLE[24] = "bcdfghjkmnpqrstvwxz25678";
 
+__attribute__((__noreturn__)) // for gcc
+void exit_with_usage(void)
+{
+    printf("Usage:  base24 [-f]\n");
+    printf("\n");
+    printf("-f      truncate and format hash to make it suitable for a filename\n");
+    exit(10);
+}
+
 int main(int argc, char** argv)
 {
-    (void)argv;
-    EXPECT(argc == 1);
+    int filename;
+
+    EXPECT(argc > 0);
+
+    if (argc == 1) {
+        filename = 0;
+    } else if (argc == 2 && 0 == strcmp(argv[1], "-f")) {
+        filename = 1;
+    } else if (argc == 2) {
+        fprintf(stderr, "Error: invalid argument \"%s\"\n", argv[1]);
+        exit_with_usage();
+    } else {
+        fprintf(stderr, "Error: too many arguments\n");
+        exit_with_usage();
+    }
+
+    size_t digit_count = 0;
 
     while (1) {
         static uint8_t buf[4];
@@ -40,10 +64,25 @@ int main(int argc, char** argv)
         }
         for (int i = 0; i < 7; i++) {
             putchar(TABLE[n % 24]);
+            digit_count++;
+            if (filename && digit_count == 2) {
+                putchar('/');
+            } else if (filename && digit_count >= 40) {
+                putchar('\n');
+                return 0;
+            }
             n /= 24;
         }
 
-        (void)count;
+        for (size_t i = 0; i < sizeof(buf) - count; i++) {
+            putchar(TABLE[0]);
+            if (filename && digit_count == 2) {
+                putchar('/');
+            } else if (filename && digit_count >= 40) {
+                putchar('\n');
+                return 0;
+            }
+        }
     }
 
     putchar('\n');
