@@ -7,16 +7,13 @@ if [ $# -ne 4 ]; then
     exit 105
 fi
 
-[ -n "$4" ] && [ "$4" != / ]
+name="$1"
+version="$2"
+file="$3"
 potion_dir="$4"
 
-[ -n "$3" ] && [ "$3" != / ]
-
-make bin/base24 bin/nar bin/sha3-256sum
-
 t="$(mktemp -d)"
-[ -d "$t" ]
-[ "$t" != / ]
+[ -d "$t" ] && [ "$t" != / ]
 rmtemp() {
     e=$?
     echo "Removing temp dir"
@@ -27,19 +24,27 @@ rmtemp() {
 trap rmtemp INT TERM EXIT
 echo "Using temp dir $t"
 
-cp "$3" "$t"
+cp -Pr -- "$file" "$t/"
 dir_digest="$(bin/nar "$t" | bin/sha3-256sum -b | bin/base24)"
 echo "Dir digest is $dir_digest"
-rm "$t/$(basename "$3")"
+rm -r -- "$t/$(basename "$file")"
+
 cat >"$t/rec" <<END
-n $1
-v $2
-d $dir_digest
+n $name
+v $version
+o - - -
 END
-recipe_path="$(bin/nar "$t/rec" | bin/sha3-256sum -b | bin/base24 -f)"
+recipe_path="$(bin/nar "$t/rec" | bin/sha3-256sum -b | bin/base24 -p)"
 echo "Recipe path is $recipe_path"
-mkdir -p "$(dirname "$potion_dir/recipe/$recipe_path")"
-cp -i "$t/rec" "$potion_dir/recipe/$recipe_path"
+mkdir -p "$(dirname "$potion_dir/_/$recipe_path")"
+
+cat >"$potion_dir/_/$recipe_path" <<END
+n $name
+v $version
+o - $recipe_path $dir_digest
+END
+
 mkdir -p "$potion_dir/$recipe_path"
-cp -i "$3" "$potion_dir/$recipe_path"
-rm -r "$t"
+cp -Pr "$file" "$potion_dir/$recipe_path"
+
+# The EXIT trap handler will remove $t for us.

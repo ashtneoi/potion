@@ -25,9 +25,9 @@ char TABLE[24] = "bcdfghjkmnpqrstvwxz25678";
 __attribute__((__noreturn__)) // for gcc
 void exit_with_usage(void)
 {
-    printf("Usage:  base24 [-f]\n");
+    printf("Usage:  base24 [-p]\n");
     printf("\n");
-    printf("-f      truncate and format hash to make it suitable for a filename\n");
+    printf("-p      truncate and format output to make it suitable for use in a path\n");
     exit(10);
 }
 
@@ -39,7 +39,7 @@ int main(int argc, char** argv)
 
     if (argc == 1) {
         filename = 0;
-    } else if (argc == 2 && 0 == strcmp(argv[1], "-f")) {
+    } else if (argc == 2 && 0 == strcmp(argv[1], "-p")) {
         filename = 1;
     } else if (argc == 2) {
         fprintf(stderr, "Error: invalid argument \"%s\"\n", argv[1]);
