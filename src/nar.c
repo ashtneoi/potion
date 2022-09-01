@@ -90,6 +90,7 @@ void dump_file(const char* path, size_t size)
             write_buf += write_count;
         }
     }
+    (void)close(f);
     write_all_to_stdout(EIGHT_ZEROES, (8 - (size % 8)) % 8);
 }
 
@@ -129,9 +130,6 @@ void serialize_prime_prime(const char* path)
             struct dirent** names; // scandir allocates the list and its contents
             int names_len = scandir(path, &names, NULL, dirent_name_strcmp);
             E_EXPECTF(names_len >= 0, "scandir failed on \"%s\"", path);
-
-            int dir = open(path, O_RDONLY);
-            E_EXPECTF(dir >= 0, "open failed on \"%s\"", path);
 
             for (int i = 0; i < names_len; i++) {
                 if (0 == strcmp(names[i]->d_name, ".") || 0 == strcmp(names[i]->d_name, "..")) {
